@@ -151,9 +151,9 @@
         <div class="setting-row"><label>채용수수료 예산 요율</label><input type="number" id="r_recruit" value="15" step="1"><span class="unit">%</span></div>
       </div>
       <div class="setting-group">
-        <h4>상여충당부채 (연간, 1인당)</h4>
-        <div class="setting-row"><label>원가 1인당 연간</label><input type="number" id="provision_wonga" value="2000000"><span class="unit">원</span></div>
-        <div class="setting-row"><label>판관비 1인당 연간</label><input type="number" id="provision_pangwan" value="2000000"><span class="unit">원</span></div>
+        <h4>상여충당부채 (월 총액 고정)</h4>
+        <div class="setting-row"><label>월 총액</label><input type="number" id="provision_total" value="2500000"><span class="unit">원</span></div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">→ 원가/판관비 인원 비율로 자동 배분</div>
       </div>
     </div>
   </div>
@@ -169,8 +169,7 @@
         <thead>
           <tr>
             <th style="width:110px">이름</th>
-            <th style="width:55px">구분</th>
-            <th style="width:75px">분류</th>
+            <th style="width:110px">분류</th>
             <th style="width:65px">상태</th>
             <th>연봉</th>
             <th>비과세(월)</th>
@@ -210,15 +209,15 @@
 <script>
 // ─── 직원 데이터 ───────────────────────────────────────────────────────────
 const employees = [
-  { id:'E001', name:'김민준',  cat:'원가',  type:'급여',    salary:52000000, nonTax:200000, joinDate:'2022-03-15', status:'재직',  pensionBase:4200000 },
-  { id:'E002', name:'이서연',  cat:'원가',  type:'급여',    salary:48000000, nonTax:200000, joinDate:'2021-07-01', status:'재직',  pensionBase:3800000 },
-  { id:'E003', name:'박준호',  cat:'판관비', type:'임원급여', salary:150000000,nonTax:0,      joinDate:'2020-01-01', status:'재직',  pensionBase:null },
-  { id:'E004', name:'최지은',  cat:'판관비', type:'직원급여', salary:42000000, nonTax:200000, joinDate:'2023-09-01', status:'재직',  pensionBase:3300000 },
-  { id:'E005', name:'정다인',  cat:'판관비', type:'직원급여', salary:38000000, nonTax:200000, joinDate:'2024-11-15', status:'재직',  pensionBase:2900000 },
-  { id:'E006', name:'강지훈',  cat:'원가',  type:'급여',    salary:45000000, nonTax:200000, joinDate:'2026-03-10', status:'입사',  pensionBase:null,    newHire:true },
-  { id:'E007', name:'윤하은',  cat:'판관비', type:'직원급여', salary:36000000, nonTax:200000, joinDate:'2026-03-22', status:'입사',  pensionBase:null,    newHire:true },
-  { id:'E008', name:'한소희',  cat:'판관비', type:'직원급여', salary:45000000, nonTax:200000, joinDate:'2024-06-15', status:'퇴사',  pensionBase:3500000, termDate:'2026-03-20' },
-  { id:'E009', name:'2026-07', cat:'원가',  type:'급여',    salary:50000000, nonTax:200000, joinDate:'2026-07-01', status:'예정',  pensionBase:null },
+  { id:'E001', name:'김민준',  type:'원가(직원)',   salary:52000000,  nonTax:200000, joinDate:'2022-03-15', status:'재직',  pensionBase:4200000 },
+  { id:'E002', name:'이서연',  type:'원가(직원)',   salary:48000000,  nonTax:200000, joinDate:'2021-07-01', status:'재직',  pensionBase:3800000 },
+  { id:'E003', name:'박준호',  type:'판관비(임원)', salary:150000000, nonTax:0,      joinDate:'2020-01-01', status:'재직',  pensionBase:null },
+  { id:'E004', name:'최지은',  type:'판관비(직원)', salary:42000000,  nonTax:200000, joinDate:'2023-09-01', status:'재직',  pensionBase:3300000 },
+  { id:'E005', name:'정다인',  type:'판관비(직원)', salary:38000000,  nonTax:200000, joinDate:'2024-11-15', status:'재직',  pensionBase:2900000 },
+  { id:'E006', name:'강지훈',  type:'원가(직원)',   salary:45000000,  nonTax:200000, joinDate:'2026-03-10', status:'입사',  pensionBase:null },
+  { id:'E007', name:'윤하은',  type:'판관비(직원)', salary:36000000,  nonTax:200000, joinDate:'2026-03-22', status:'입사',  pensionBase:null },
+  { id:'E008', name:'한소희',  type:'판관비(직원)', salary:45000000,  nonTax:200000, joinDate:'2024-06-15', status:'퇴사',  pensionBase:3500000, termDate:'2026-03-20' },
+  { id:'E009', name:'2026-07', type:'원가(직원)',   salary:50000000,  nonTax:200000, joinDate:'2026-07-01', status:'예정',  pensionBase:null },
 ];
 
 // ─── 설정값 읽기 ──────────────────────────────────────────────────────────
@@ -232,8 +231,7 @@ function getSettings() {
     pensionMin: parseFloat(document.getElementById('pension_min').value),
     fxUsd:    parseFloat(document.getElementById('fx_usd').value),
     rRecruit: parseFloat(document.getElementById('r_recruit').value) / 100,
-    provisionWonga:   parseFloat(document.getElementById('provision_wonga').value),
-    provisionPangwan: parseFloat(document.getElementById('provision_pangwan').value),
+    provisionTotal: parseFloat(document.getElementById('provision_total').value),
   };
 }
 
@@ -344,22 +342,25 @@ function render() {
   let execSalary=0,  execIns=0,  execCount=0;
   let staffSalary=0, staffIns=0, staffCount=0;
 
+  // type에서 원가/판관비 구분 추출
+  function getCat(type) { return type.startsWith('원가') ? '원가' : '판관비'; }
+
   const manualAdj = {};
 
   employees.forEach((emp, idx) => {
     const c = calcEmployee(emp, year, month, s);
     const isPending = emp.status === '예정';
+    const cat = getCat(emp.type);
 
     const tr = document.createElement('tr');
-    tr.className = `group-${emp.cat}` + (isPending ? ' status-예정-row' : '');
+    tr.className = `group-${cat}` + (isPending ? ' status-예정-row' : '');
 
     const manualId = `adj_${idx}`;
     manualAdj[idx] = parseFloat(document.getElementById(manualId)?.value || 0) || 0;
 
     tr.innerHTML = `
       <td><b>${emp.name}</b>${c.note ? `<div style="font-size:10px;color:#f59e0b;margin-top:1px">${c.note}</div>` : ''}</td>
-      <td class="cat-${emp.cat}">${emp.cat}</td>
-      <td style="font-size:11px">${emp.type}</td>
+      <td class="cat-${cat}" style="font-size:11px;font-weight:600">${emp.type}</td>
       <td><span class="status status-${emp.status}">${emp.status}</span></td>
       <td>${(emp.salary/10000).toLocaleString()}만</td>
       <td style="color:#94a3b8">${emp.nonTax ? (emp.nonTax/10000).toFixed(1)+'만' : '-'}</td>
@@ -379,9 +380,9 @@ function render() {
       totalSalary += c.salary;
       totalIns    += c.insTotal;
 
-      if (emp.cat === '원가') {
+      if (emp.type === '원가(직원)') {
         wongaSalary += c.salary; wongaIns += c.insTotal; wongaCount++;
-      } else if (emp.type === '임원급여') {
+      } else if (emp.type === '판관비(임원)') {
         execSalary += c.salary; execIns += c.insTotal; execCount++;
       } else {
         staffSalary += c.salary; staffIns += c.insTotal; staffCount++;
@@ -401,32 +402,33 @@ function render() {
     </tr>
   `;
 
-  const activeCount = employees.filter(e => e.status !== '예정').length;
   document.getElementById('emp_count').textContent = `총 ${employees.length}명 (예정 ${employees.filter(e=>e.status==='예정').length}명 포함)`;
 
   // ─── P&L 요약 ─────────────────────────────────────────────────────────
-  const provWonga   = Math.round(s.provisionWonga   / 12 * wongaCount);
-  const provPangwan = Math.round(s.provisionPangwan / 12 * (execCount + staffCount));
+  const activeCount = wongaCount + execCount + staffCount;
+  const pangwanCount = execCount + staffCount;
+  const provWonga   = activeCount > 0 ? Math.round(s.provisionTotal * wongaCount   / activeCount) : 0;
+  const provPangwan = activeCount > 0 ? Math.round(s.provisionTotal * pangwanCount / activeCount) : 0;
 
-  const wongaTotal = wongaSalary + wongaIns + provWonga;
+  const wongaTotal   = wongaSalary + wongaIns + provWonga;
   const pangwanTotal = execSalary + execIns + staffSalary + staffIns + provPangwan;
-  const grandTotal = wongaTotal + pangwanTotal;
+  const grandTotal   = wongaTotal + pangwanTotal;
 
   document.getElementById('plGrid').innerHTML = `
     <div class="pl-card wonga">
-      <h3>원가 — 급여</h3>
-      <div class="pl-row"><span class="pl-label indent">기본급여</span><span class="pl-amount">${fmtPlain(wongaSalary)}</span></div>
+      <h3>원가(직원)</h3>
+      <div class="pl-row"><span class="pl-label indent">급여</span><span class="pl-amount">${fmtPlain(wongaSalary)}</span></div>
       <div class="pl-row"><span class="pl-label indent">4대보험 (회사)</span><span class="pl-amount">${fmtPlain(wongaIns)}</span></div>
-      <div class="pl-row"><span class="pl-label indent">상여충당부채 (${wongaCount}명)</span><span class="pl-amount">${fmtPlain(provWonga)}</span></div>
+      <div class="pl-row"><span class="pl-label indent">상여충당부채 (${wongaCount}명 / 월총액 ${fmtPlain(s.provisionTotal)}원의 ${activeCount>0?Math.round(wongaCount/activeCount*100):0}%)</span><span class="pl-amount">${fmtPlain(provWonga)}</span></div>
       <div class="pl-row subtotal"><span class="pl-label">소계</span><span class="pl-amount">${fmtPlain(wongaTotal)}</span></div>
     </div>
     <div class="pl-card pangwan">
-      <h3>판관비 — 인건비</h3>
-      <div class="pl-row"><span class="pl-label indent">임원급여 (${execCount}명)</span><span class="pl-amount">${fmtPlain(execSalary + execIns)}</span></div>
+      <h3>판관비</h3>
+      <div class="pl-row"><span class="pl-label indent">판관비(임원) — ${execCount}명</span><span class="pl-amount">${fmtPlain(execSalary + execIns)}</span></div>
       <div class="pl-row"><span class="pl-label" style="padding-left:24px;font-size:11px;color:#cbd5e1">└ 급여 ${fmtPlain(execSalary)} + 4대보험 ${fmtPlain(execIns)}</span><span></span></div>
-      <div class="pl-row"><span class="pl-label indent">직원급여 (${staffCount}명)</span><span class="pl-amount">${fmtPlain(staffSalary + staffIns)}</span></div>
+      <div class="pl-row"><span class="pl-label indent">판관비(직원) — ${staffCount}명</span><span class="pl-amount">${fmtPlain(staffSalary + staffIns)}</span></div>
       <div class="pl-row"><span class="pl-label" style="padding-left:24px;font-size:11px;color:#cbd5e1">└ 급여 ${fmtPlain(staffSalary)} + 4대보험 ${fmtPlain(staffIns)}</span><span></span></div>
-      <div class="pl-row"><span class="pl-label indent">상여충당부채 (${execCount+staffCount}명)</span><span class="pl-amount">${fmtPlain(provPangwan)}</span></div>
+      <div class="pl-row"><span class="pl-label indent">상여충당부채 (${pangwanCount}명 / 월총액의 ${activeCount>0?Math.round(pangwanCount/activeCount*100):0}%)</span><span class="pl-amount">${fmtPlain(provPangwan)}</span></div>
       <div class="pl-row subtotal"><span class="pl-label">소계</span><span class="pl-amount">${fmtPlain(pangwanTotal)}</span></div>
     </div>
   `;
