@@ -358,22 +358,40 @@ function render() {
     const manualId = `adj_${idx}`;
     manualAdj[idx] = parseFloat(document.getElementById(manualId)?.value || 0) || 0;
 
-    tr.innerHTML = `
-      <td><b>${emp.name}</b>${c.note ? `<div style="font-size:10px;color:#f59e0b;margin-top:1px">${c.note}</div>` : ''}</td>
-      <td class="cat-${cat}" style="font-size:11px;font-weight:600">${emp.type}</td>
-      <td><span class="status status-${emp.status}">${emp.status}</span></td>
-      <td>${(emp.salary/10000).toLocaleString()}만</td>
-      <td style="color:#94a3b8">${emp.nonTax ? (emp.nonTax/10000).toFixed(1)+'만' : '-'}</td>
-      <td>${fmt(emp.salary/12 - emp.nonTax)}</td>
-      <td>${fmt(c.salary)}</td>
-      <td>${fmt(c.health)}</td>
-      <td>${fmt(c.ltc)}</td>
-      <td>${fmt(c.employ)}</td>
-      <td>${fmt(c.pension)}</td>
-      <td>${fmt(c.insTotal)}</td>
-      <td><input class="manual" type="number" id="${manualId}" placeholder="0" onchange="render()" style="width:80px"></td>
-      <td style="font-weight:700;color:#1e293b">${fmt(c.salary + c.insTotal + (manualAdj[idx]||0))}</td>
-    `;
+    if (isPending) {
+      tr.innerHTML = `
+        <td><input type="text" value="${emp.name}" onchange="updateEmp(${idx},'name',this.value)" style="width:90px;padding:3px 6px;border:1px solid #fbbf24;border-radius:4px;font-size:12px;font-weight:600"></td>
+        <td><select onchange="updateEmp(${idx},'type',this.value)" style="padding:3px 5px;border:1px solid #fbbf24;border-radius:4px;font-size:11px;color:#7c3aed">
+          <option value="원가(직원)"  ${emp.type==='원가(직원)'  ?'selected':''}>원가(직원)</option>
+          <option value="판관비(임원)"${emp.type==='판관비(임원)'?'selected':''}>판관비(임원)</option>
+          <option value="판관비(직원)"${emp.type==='판관비(직원)'?'selected':''}>판관비(직원)</option>
+        </select></td>
+        <td><span class="status status-예정">예정</span></td>
+        <td><input type="number" value="${emp.salary}" onchange="updateEmp(${idx},'salary',+this.value)" style="width:90px;padding:3px 6px;border:1px solid #fbbf24;border-radius:4px;font-size:12px;text-align:right"></td>
+        <td><input type="number" value="${emp.nonTax}" onchange="updateEmp(${idx},'nonTax',+this.value)" style="width:75px;padding:3px 6px;border:1px solid #fbbf24;border-radius:4px;font-size:12px;text-align:right"></td>
+        <td colspan="2"><input type="date" value="${emp.joinDate}" onchange="updateEmp(${idx},'joinDate',this.value)" style="padding:3px 6px;border:1px solid #fbbf24;border-radius:4px;font-size:12px"></td>
+        <td colspan="6" style="text-align:center;color:#cbd5e1;font-size:11px">— 예정 입사자 (계산 제외) —</td>
+        <td>-</td>
+        <td style="color:#cbd5e1">-</td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td><b>${emp.name}</b>${c.note ? `<div style="font-size:10px;color:#f59e0b;margin-top:1px">${c.note}</div>` : ''}</td>
+        <td class="cat-${cat}" style="font-size:11px;font-weight:600">${emp.type}</td>
+        <td><span class="status status-${emp.status}">${emp.status}</span></td>
+        <td>${(emp.salary/10000).toLocaleString()}만</td>
+        <td style="color:#94a3b8">${emp.nonTax ? (emp.nonTax/10000).toFixed(1)+'만' : '-'}</td>
+        <td>${fmt(emp.salary/12 - emp.nonTax)}</td>
+        <td>${fmt(c.salary)}</td>
+        <td>${fmt(c.health)}</td>
+        <td>${fmt(c.ltc)}</td>
+        <td>${fmt(c.employ)}</td>
+        <td>${fmt(c.pension)}</td>
+        <td>${fmt(c.insTotal)}</td>
+        <td><input class="manual" type="number" id="${manualId}" placeholder="0" onchange="render()" style="width:80px"></td>
+        <td style="font-weight:700;color:#1e293b">${fmt(c.salary + c.insTotal + (manualAdj[idx]||0))}</td>
+      `;
+    }
     body.appendChild(tr);
 
     if (!isPending) {
@@ -451,6 +469,12 @@ function toggleSettings() {
     body.style.display = 'none';
     toggle.textContent = '▼ 펼치기';
   }
+}
+
+// 예정 입사자 정보 수정
+function updateEmp(idx, field, value) {
+  employees[idx][field] = value;
+  render();
 }
 
 // 설정값 변경 시 재계산
