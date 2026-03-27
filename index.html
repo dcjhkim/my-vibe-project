@@ -255,22 +255,32 @@ function calcEmployee(emp, year, month, s) {
   let insuranceApplies = false;
   let note = '';
 
+  // 예정 직원: 입사월 기준으로 자동 상태 결정
+  let effectiveStatus = emp.status;
   if (emp.status === '예정') {
-    return { salary:0, health:0, ltc:0, employ:0, pension:0, insTotal:0, note:'예정 입사자' };
+    if (year < jYear || (year === jYear && month < jMonth)) {
+      return { salary:0, health:0, ltc:0, employ:0, pension:0, insTotal:0, note:'예정 입사자', isFuture:true };
+    } else if (year === jYear && month === jMonth) {
+      effectiveStatus = '입사';
+      note = '예정→입사 자동반영';
+    } else {
+      effectiveStatus = '재직';
+      note = '예정→재직 자동반영';
+    }
   }
 
-  if (emp.status === '재직') {
+  if (effectiveStatus === '재직') {
     salary = monthlyBase;
     insuranceApplies = true;
 
-  } else if (emp.status === '입사') {
+  } else if (effectiveStatus === '입사') {
     const isThisMonth = (jYear === year && jMonth === month);
     if (isThisMonth) {
       if (jDay <= 20) {
         const workDays = totalDays - jDay + 1;
         salary = Math.round(monthlyBase * workDays / totalDays);
-        note = `${jDay}일 입사, ${workDays}일 근무`;
-        insuranceApplies = (jDay === 1); // 1일 입사만 당월 4대보험
+        note = (emp.status==='예정'?'예정→입사 자동반영 / ':'')+`${jDay}일 입사, ${workDays}일 근무`;
+        insuranceApplies = (jDay === 1);
         if (!insuranceApplies) note += ' (4대보험 익월)';
       } else {
         salary = 0;
@@ -278,12 +288,11 @@ function calcEmployee(emp, year, month, s) {
         note = `${jDay}일 입사 → 당월 미지급, 익월 소급`;
       }
     } else {
-      // 이전에 이미 입사한 경우 (소급 지급 월 처리)
       salary = monthlyBase;
       insuranceApplies = true;
     }
 
-  } else if (emp.status === '퇴사') {
+  } else if (effectiveStatus === '퇴사') {
     const termDate = new Date(emp.termDate);
     const tYear = termDate.getFullYear();
     const tMonth = termDate.getMonth() + 1;
@@ -296,7 +305,7 @@ function calcEmployee(emp, year, month, s) {
     }
     insuranceApplies = true; // 하루라도 근무
 
-  } else if (emp.status === '휴직') {
+  } else if (effectiveStatus === '휴직') {
     const hDate = new Date(emp.termDate || emp.joinDate);
     const hDay = hDate.getDate();
     salary = Math.round(monthlyBase * (hDay - 1) / totalDays);
@@ -313,7 +322,7 @@ function calcEmployee(emp, year, month, s) {
     pension = Math.min(Math.max(Math.round(pensionBase * s.rPension), s.pensionMin), s.pensionMax);
   }
 
-  return { salary, health, ltc, employ, pension, insTotal: health+ltc+employ+pension, note };
+  return { salary, health, ltc, employ, pension, insTotal: health+ltc+employ+pension, note, effectiveStatus };
 }
 
 // ─── 숫자 포맷 ────────────────────────────────────────────────────────────
@@ -349,16 +358,16 @@ function render() {
 
   employees.forEach((emp, idx) => {
     const c = calcEmployee(emp, year, month, s);
-    const isPending = emp.status === '예정';
+    const isFuture = c.isFuture === true;
     const cat = getCat(emp.type);
 
     const tr = document.createElement('tr');
-    tr.className = `group-${cat}` + (isPending ? ' status-예정-row' : '');
+    tr.className = `group-${cat}` + (isFuture ? ' status-예정-row' : '');
 
     const manualId = `adj_${idx}`;
     manualAdj[idx] = parseFloat(document.getElementById(manualId)?.value || 0) || 0;
 
-    if (isPending) {
+    if (isFuture) {
       tr.innerHTML = `
         <td><input type="text" value="${emp.name}" onchange="updateEmp(${idx},'name',this.value)" style="width:90px;padding:3px 6px;border:1px solid #fbbf24;border-radius:4px;font-size:12px;font-weight:600"></td>
         <td><select onchange="updateEmp(${idx},'type',this.value)" style="padding:3px 5px;border:1px solid #fbbf24;border-radius:4px;font-size:11px;color:#7c3aed">
@@ -378,7 +387,7 @@ function render() {
       tr.innerHTML = `
         <td><b>${emp.name}</b>${c.note ? `<div style="font-size:10px;color:#f59e0b;margin-top:1px">${c.note}</div>` : ''}</td>
         <td class="cat-${cat}" style="font-size:11px;font-weight:600">${emp.type}</td>
-        <td><span class="status status-${emp.status}">${emp.status}</span></td>
+        <td><span class="status status-${c.effectiveStatus}">${c.effectiveStatus}</span></td>
         <td>${(emp.salary/10000).toLocaleString()}만</td>
         <td style="color:#94a3b8">${emp.nonTax ? (emp.nonTax/10000).toFixed(1)+'만' : '-'}</td>
         <td>${fmt(emp.salary/12 - emp.nonTax)}</td>
@@ -394,7 +403,7 @@ function render() {
     }
     body.appendChild(tr);
 
-    if (!isPending) {
+    if (!isFuture) {
       totalSalary += c.salary;
       totalIns    += c.insTotal;
 
