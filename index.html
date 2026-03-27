@@ -207,6 +207,31 @@
   <div class="note">자동 계산 행(초록) = 입사일 기준 산출 &nbsp;|&nbsp; 수기 행(흰색) = 직접 입력</div>
 </div>
 
+<!-- 월 비용 -->
+<div class="section">
+  <div class="section-header">
+    <h2>월 비용</h2>
+    <span class="badge" id="cost_total_badge"></span>
+  </div>
+  <div class="table-wrap">
+    <table id="costTable">
+      <thead>
+        <tr>
+          <th class="left" style="width:80px">구분</th>
+          <th class="left" style="width:130px">항목</th>
+          <th class="left" style="width:70px">유형</th>
+          <th style="width:120px">단가</th>
+          <th style="width:90px">인원수</th>
+          <th style="width:130px">월 금액 (원)</th>
+        </tr>
+      </thead>
+      <tbody id="costBody"></tbody>
+      <tfoot id="costFoot"></tfoot>
+    </table>
+  </div>
+  <div class="note">USD 항목은 설정의 환율 자동 적용 &nbsp;|&nbsp; 인원수 칸이 있는 항목만 수기 입력</div>
+</div>
+
 <!-- P&L 요약 -->
 <div class="section">
   <div class="section-header">
@@ -236,6 +261,18 @@ const employees = [
 let showInsDetail = false;
 let manualBonuses = [];
 let bonusIdSeq = 0;
+
+// ─── 월 비용 데이터 ───────────────────────────────────────────────────────────
+const monthlyCosts = [
+  { cat:'원가',  name:'Claude',    usd:150,  krw:0,      perPerson:true,  count:0 },
+  { cat:'원가',  name:'ChatGPT',   usd:15,   krw:0,      perPerson:true,  count:0 },
+  { cat:'원가',  name:'GitHub',    usd:10,   krw:0,      perPerson:true,  count:0 },
+  { cat:'원가',  name:'Tailscale', usd:10,   krw:0,      perPerson:true,  count:0 },
+  { cat:'판관비', name:'Claude',   usd:20,   krw:0,      perPerson:true,  count:0 },
+  { cat:'판관비', name:'세무자문', usd:0,    krw:300000, perPerson:false, count:1 },
+  { cat:'판관비', name:'노무자문', usd:0,    krw:150000, perPerson:false, count:1 },
+  { cat:'판관비', name:'근태소프트',usd:0,   krw:3500,   perPerson:true,  count:0 },
+];
 
 // ─── 설정값 ──────────────────────────────────────────────────────────────────
 function getS() {
@@ -530,8 +567,47 @@ function render() {
   const wBonuses = allBonuses.filter(b=>getCat(b.type)==='원가').reduce((s,b)=>s+b.amount,0);
   const pBonuses = allBonuses.filter(b=>getCat(b.type)==='판관비').reduce((s,b)=>s+b.amount,0);
 
-  const wTotal = wSalary + wIns + wRecruit + provW + wBonuses;
-  const pTotal = eSalary + eIns + pSalary + pIns + pRecruit + provP + pBonuses;
+  // ── 월 비용 렌더 ──
+  const costBody = document.getElementById('costBody');
+  const costFoot = document.getElementById('costFoot');
+  costBody.innerHTML = '';
+  let wCost = 0, pCost = 0;
+
+  monthlyCosts.forEach((c, idx) => {
+    const unitKRW = c.usd > 0 ? Math.round(c.usd * s.fxUsd) : c.krw;
+    const countVal = parseFloat(document.getElementById(`cost_count_${idx}`)?.value || c.count) || 0;
+    monthlyCosts[idx].count = countVal;
+    const amount = Math.round(unitKRW * (c.perPerson ? countVal : 1));
+    if (c.cat === '원가') wCost += amount; else pCost += amount;
+
+    const unitLabel = c.usd > 0
+      ? `$${c.usd} × ${fmtN(Math.round(c.usd * s.fxUsd))}원`
+      : `${fmtN(c.krw)}원`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="left"><span class="${c.cat==='원가'?'type-원가':'type-판관비'}">${c.cat}</span></td>
+      <td class="left"><b>${c.name}</b></td>
+      <td class="left muted" style="font-size:11px">${c.perPerson ? '인원별' : '고정'}</td>
+      <td class="muted">${unitLabel}</td>
+      <td>${c.perPerson
+        ? `<input class="manual" type="number" id="cost_count_${idx}" value="${countVal}" min="0" onchange="render()" style="width:60px"> 명`
+        : '<span class="muted">-</span>'}</td>
+      <td class="auto">${fmtN(amount)}</td>
+    `;
+    costBody.appendChild(tr);
+  });
+
+  const totalCost = wCost + pCost;
+  document.getElementById('cost_total_badge').textContent = `원가 ${fmtN(wCost)}원 / 판관비 ${fmtN(pCost)}원`;
+  costFoot.innerHTML = `
+    <tr class="subtotal-row">
+      <td class="left" colspan="5">합 계</td>
+      <td class="auto">${fmtN(totalCost)}</td>
+    </tr>`;
+
+  const wTotal = wSalary + wIns + wRecruit + provW + wBonuses + wCost;
+  const pTotal = eSalary + eIns + pSalary + pIns + pRecruit + provP + pBonuses + pCost;
   const grand  = wTotal + pTotal;
 
   document.getElementById('plGrid').innerHTML = `
@@ -542,6 +618,7 @@ function render() {
       <div class="pl-row"><span class="pl-label sub">채용수수료</span><span class="pl-amount">${wRecruit?fmtN(wRecruit):'-'}</span></div>
       <div class="pl-row"><span class="pl-label sub">상여 (${allBonuses.filter(b=>getCat(b.type)==='원가').length}건)</span><span class="pl-amount">${wBonuses?fmtN(wBonuses):'-'}</span></div>
       <div class="pl-row"><span class="pl-label sub">상여충당부채 (${wCount}명 / 월총액 ${Math.round(wCount/Math.max(activeCount,1)*100)}%)</span><span class="pl-amount">${fmtN(provW)}</span></div>
+      <div class="pl-row"><span class="pl-label sub">월 비용</span><span class="pl-amount">${wCost?fmtN(wCost):'-'}</span></div>
       <div class="pl-row subtotal"><span class="pl-label">소계</span><span class="pl-amount">${fmtN(wTotal)}</span></div>
     </div>
     <div class="pl-card pangwan">
@@ -551,6 +628,7 @@ function render() {
       <div class="pl-row"><span class="pl-label sub">채용수수료</span><span class="pl-amount">${(eRecruit+pRecruit)?fmtN(eRecruit+pRecruit):'-'}</span></div>
       <div class="pl-row"><span class="pl-label sub">상여 (${allBonuses.filter(b=>getCat(b.type)==='판관비').length}건)</span><span class="pl-amount">${pBonuses?fmtN(pBonuses):'-'}</span></div>
       <div class="pl-row"><span class="pl-label sub">상여충당부채 (${pangwanCount}명 / 월총액 ${Math.round(pangwanCount/Math.max(activeCount,1)*100)}%)</span><span class="pl-amount">${fmtN(provP)}</span></div>
+      <div class="pl-row"><span class="pl-label sub">월 비용</span><span class="pl-amount">${pCost?fmtN(pCost):'-'}</span></div>
       <div class="pl-row subtotal"><span class="pl-label">소계</span><span class="pl-amount">${fmtN(pTotal)}</span></div>
     </div>
   `;
