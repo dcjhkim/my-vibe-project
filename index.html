@@ -159,17 +159,16 @@
     </div>
 
     <div class="sidebar-divider"></div>
-    <div class="sidebar-section">월별 입력</div>
+    <div class="sidebar-section">입력</div>
 
-    <div class="month-toggle open" onclick="toggleMonths(this)">
-      <span>월 선택</span><span class="arrow">▾</span>
+    <div class="sidebar-item" onclick="navInput('인건비')">
+      <span class="icon">👥</span> 인건비
     </div>
-    <div class="sidebar-month-group" id="monthGroup">
-      <div class="sidebar-sub" onclick="navMonth('인건비',1)">1월 인건비</div>
-      <div class="sidebar-sub" onclick="navMonth('인건비',2)">2월 인건비</div>
-      <div class="sidebar-sub active" onclick="navMonth('인건비',3)">3월 인건비</div>
-      <div class="sidebar-sub" onclick="navMonth('상여',3)">3월 상여</div>
-      <div class="sidebar-sub" onclick="navMonth('월비용',3)">3월 월비용</div>
+    <div class="sidebar-item" onclick="navInput('채용수수료')">
+      <span class="icon">🤝</span> 채용수수료
+    </div>
+    <div class="sidebar-item" onclick="navInput('월비용')">
+      <span class="icon">💻</span> 월 비용
     </div>
 
     <div class="sidebar-divider"></div>
@@ -269,15 +268,45 @@
       </div>
     </div>
 
-    <!-- 인건비 입력 -->
+    <!-- 입력 페이지 -->
     <div class="page" id="page-input">
-      <div class="page-title" id="inputTitle">인건비 입력 <span>3월</span></div>
-      <div class="card">
-        <div class="month-tabs" id="inputTabs">
-          <div class="month-tab active">인건비</div>
-          <div class="month-tab" onclick="switchTab(this,'상여')">상여</div>
-          <div class="month-tab" onclick="switchTab(this,'월비용')">월 비용</div>
+      <div class="page-title" id="inputTitle">인건비 <span>3월</span></div>
+
+      <!-- 월 선택 탭 -->
+      <div class="card" style="margin-bottom:12px">
+        <div style="padding:10px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:#94a3b8;margin-right:4px">월 선택</span>
+          <div id="monthTabs" style="display:flex;gap:4px;flex-wrap:wrap">
+            <div class="month-tab" onclick="selectMonth(this,1)">1월</div>
+            <div class="month-tab" onclick="selectMonth(this,2)">2월</div>
+            <div class="month-tab active" onclick="selectMonth(this,3)">3월</div>
+            <div class="month-tab" onclick="selectMonth(this,4)">4월</div>
+            <div class="month-tab" onclick="selectMonth(this,5)">5월</div>
+            <div class="month-tab" onclick="selectMonth(this,6)">6월</div>
+            <div class="month-tab" onclick="selectMonth(this,7)">7월</div>
+            <div class="month-tab" onclick="selectMonth(this,8)">8월</div>
+            <div class="month-tab" onclick="selectMonth(this,9)">9월</div>
+            <div class="month-tab" onclick="selectMonth(this,10)">10월</div>
+            <div class="month-tab" onclick="selectMonth(this,11)">11월</div>
+            <div class="month-tab" onclick="selectMonth(this,12)">12월</div>
+          </div>
         </div>
+      </div>
+
+      <div class="card">
+        <!-- 인건비 카테고리: 서브탭 -->
+        <div id="subtabs-인건비">
+          <div class="month-tabs" style="border-bottom:1px solid #f1f5f9">
+            <div class="month-tab active" onclick="switchTab(this,'인건비')">인건비</div>
+            <div class="month-tab" onclick="switchTab(this,'상여')">상여</div>
+          </div>
+        </div>
+        <!-- 채용수수료 카테고리: 서브탭 없음 -->
+        <div id="subtabs-채용수수료" style="display:none">
+          <div style="padding:10px 16px;font-size:12px;color:#94a3b8;border-bottom:1px solid #f1f5f9">입사 발생 건만 표시됩니다</div>
+        </div>
+        <!-- 월비용 카테고리: 서브탭 없음 -->
+        <div id="subtabs-월비용" style="display:none"></div>
 
         <!-- 인건비 탭 -->
         <div id="tab-인건비">
@@ -312,6 +341,17 @@
             </tbody>
           </table>
           <button style="margin-top:10px;padding:5px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;font-size:12px">+ 행 추가</button>
+        </div>
+
+        <!-- 채용수수료 탭 -->
+        <div id="tab-채용수수료" style="display:none;padding:16px">
+          <table class="input-table">
+            <thead><tr><th class="left">이름</th><th class="left">분류</th><th>입사일</th><th>연봉</th><th>예산 (15%)</th><th>실제 수수료</th><th class="left">비고</th></tr></thead>
+            <tbody>
+              <tr><td class="left"><b>강지훈</b></td><td class="left"><span class="type-원가">원가(직원)</span></td><td>2026-03-10</td><td class="muted">4,500만</td><td class="auto-val">6,750</td><td><input type="number" placeholder="실제 입력" style="width:100px"></td><td class="left muted">헤드헌팅</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:10px;font-size:11px;color:#94a3b8">※ 입사가 없는 달은 항목이 표시되지 않습니다</div>
         </div>
 
         <!-- 월비용 탭 -->
@@ -415,46 +455,58 @@ function buildAnnual() {
 // ── 네비게이션 ────────────────────────────────────────────────────────────────
 let currentPage = 'annual';
 
+let currentCategory = '인건비';
+let currentMonth = 3;
+
 function nav(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  document.querySelectorAll('.sidebar-sub').forEach(i => i.classList.remove('active'));
-
-  if (page === 'annual')   { document.getElementById('page-annual').classList.add('active'); }
-  if (page === 'summary')  { document.getElementById('page-summary').classList.add('active'); }
-  if (page === 'settings') { document.getElementById('page-settings').classList.add('active'); }
-
+  if (page === 'annual')   document.getElementById('page-annual').classList.add('active');
+  if (page === 'summary')  document.getElementById('page-summary').classList.add('active');
+  if (page === 'settings') document.getElementById('page-settings').classList.add('active');
   event?.currentTarget?.classList.add('active');
-  currentPage = page;
 }
 
-function navMonth(tab, month) {
+function navInput(category) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.sidebar-sub').forEach(i => i.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   document.getElementById('page-input').classList.add('active');
   event?.currentTarget?.classList.add('active');
-  document.getElementById('inputTitle').innerHTML = `${tab} 입력 <span>${month}월</span>`;
-  switchTabByName(tab);
+  currentCategory = category;
+  updateInputPage();
+}
+
+function selectMonth(el, month) {
+  document.querySelectorAll('#monthTabs .month-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentMonth = month;
+  updateInputPage();
+}
+
+function updateInputPage() {
+  // 타이틀
+  document.getElementById('inputTitle').innerHTML = `${currentCategory} <span>${currentMonth}월</span>`;
+  // 서브탭 표시
+  ['인건비','채용수수료','월비용'].forEach(c => {
+    const el = document.getElementById('subtabs-'+c);
+    if (el) el.style.display = c === currentCategory ? 'block' : 'none';
+  });
+  // 탭 콘텐츠: 카테고리에 맞는 기본 탭 표시
+  const defaultTab = currentCategory === '인건비' ? '인건비' : currentCategory;
+  showContentTab(defaultTab);
 }
 
 function switchTab(el, name) {
-  document.querySelectorAll('.month-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#subtabs-인건비 .month-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  switchTabByName(name);
+  showContentTab(name);
 }
 
-function switchTabByName(name) {
-  ['인건비','상여','월비용'].forEach(t => {
+function showContentTab(name) {
+  ['인건비','상여','월비용','채용수수료'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if (el) el.style.display = t === name ? 'block' : 'none';
   });
-}
-
-function toggleMonths(el) {
-  el.classList.toggle('open');
-  const group = document.getElementById('monthGroup');
-  group.style.display = group.style.display === 'none' ? 'block' : 'none';
 }
 
 buildAnnual();
