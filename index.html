@@ -3,676 +3,461 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>예상 P&L — 인건비 관리</title>
+  <title>예상 P&L 시스템</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Malgun Gothic', -apple-system, sans-serif; background: #f1f5f9; color: #1e293b; font-size: 13px; }
+    body { font-family: 'Malgun Gothic', -apple-system, sans-serif; background: #f1f5f9; color: #1e293b; font-size: 13px; display: flex; flex-direction: column; height: 100vh; }
 
-    .header { background: #1e3a8a; color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
-    .header h1 { font-size: 18px; font-weight: 700; }
-    .header .subtitle { font-size: 12px; opacity: 0.7; margin-top: 2px; }
-    .month-selector { display: flex; align-items: center; gap: 8px; }
-    .month-selector select { padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15); color: white; font-size: 14px; font-weight: 600; cursor: pointer; }
-    .month-selector select option { background: #1e3a8a; }
+    /* ── 상단 헤더 ── */
+    .top-bar {
+      background: #1e3a8a; color: white;
+      padding: 0 20px; height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; z-index: 100;
+    }
+    .top-bar h1 { font-size: 16px; font-weight: 700; }
+    .top-bar .year-select { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .top-bar select { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+    .top-bar select option { background: #1e3a8a; }
+    .top-bar .pdf-btn { background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .top-bar .pdf-btn:hover { background: #dc2626; }
 
-    .container { padding: 20px 24px; max-width: 1700px; margin: 0 auto; }
+    /* ── 레이아웃 ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
 
-    /* Settings */
-    .settings-panel { background: white; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .settings-header { padding: 12px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
-    .settings-header h3 { font-size: 13px; font-weight: 600; color: #475569; }
-    .settings-body { padding: 14px 16px; display: flex; gap: 32px; flex-wrap: wrap; border-top: 1px solid #f1f5f9; }
-    .setting-group { display: flex; flex-direction: column; gap: 8px; }
-    .setting-group h4 { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-    .setting-row { display: flex; align-items: center; gap: 8px; }
-    .setting-row label { font-size: 12px; color: #64748b; width: 170px; }
-    .setting-row input { width: 100px; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 5px; font-size: 12px; text-align: right; }
-    .unit { font-size: 11px; color: #94a3b8; }
+    /* ── 사이드바 ── */
+    .sidebar {
+      width: 200px; flex-shrink: 0;
+      background: #1e293b; color: #cbd5e1;
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-section { padding: 16px 12px 6px; font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 16px; cursor: pointer; border-radius: 0;
+      font-size: 13px; color: #94a3b8; transition: all 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; }
+    .sidebar-item.active { background: rgba(59,130,246,0.15); color: #60a5fa; border-left-color: #3b82f6; font-weight: 600; }
+    .sidebar-item .icon { font-size: 15px; width: 18px; text-align: center; }
+    .sidebar-divider { margin: 8px 12px; border-top: 1px solid #334155; }
+    .sidebar-month-group { padding: 4px 0; }
+    .sidebar-sub {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 16px 7px 28px; cursor: pointer;
+      font-size: 12px; color: #64748b; transition: all 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .sidebar-sub:hover { background: rgba(255,255,255,0.04); color: #94a3b8; }
+    .sidebar-sub.active { color: #93c5fd; border-left-color: #60a5fa; }
+    .month-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 16px; cursor: pointer; font-size: 13px; color: #94a3b8;
+    }
+    .month-toggle:hover { color: #e2e8f0; }
+    .month-toggle .arrow { font-size: 10px; transition: transform 0.2s; }
+    .month-toggle.open .arrow { transform: rotate(180deg); }
 
-    /* Section */
-    .section { background: white; border-radius: 10px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; }
-    .section-header { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .section-header h2 { font-size: 14px; font-weight: 700; }
-    .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #eff6ff; color: #3b82f6; font-weight: 600; white-space: nowrap; }
-    .badge-green { background: #dcfce7; color: #16a34a; }
-    .badge-yellow { background: #fef9c3; color: #ca8a04; }
-    .section-header .actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
-    .btn { padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-ghost { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
-    .btn-sm { padding: 3px 8px; font-size: 11px; }
+    /* ── 메인 콘텐츠 ── */
+    .main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    .page { display: none; }
+    .page.active { display: block; }
 
-    /* Table */
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #f8fafc; padding: 7px 9px; text-align: right; font-size: 11px; font-weight: 600; color: #64748b; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
-    th.left { text-align: left; }
-    td { padding: 7px 9px; border-bottom: 1px solid #f1f5f9; text-align: right; white-space: nowrap; vertical-align: middle; }
-    td.left { text-align: left; }
-    tr:hover td { background: #fafbff; }
-    tr.pending-row td { opacity: 0.45; }
-    tr.subtotal-row td { background: #f8fafc; font-weight: 700; border-top: 2px solid #e2e8f0; }
+    /* ── 공통 카드 ── */
+    .card { background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; overflow: hidden; }
+    .card-header { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+    .card-header h2 { font-size: 14px; font-weight: 700; }
+    .card-body { padding: 16px; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #eff6ff; color: #3b82f6; font-weight: 600; }
 
-    .auto { color: #2563eb; font-weight: 500; }
-    .zero { color: #cbd5e1; }
+    /* ── 연간 PL 테이블 ── */
+    .annual-table-wrap { overflow-x: auto; }
+    .annual-table { width: 100%; border-collapse: collapse; min-width: 1100px; font-size: 12px; }
+    .annual-table th { background: #f8fafc; padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 600; color: #64748b; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+    .annual-table th.left { text-align: left; }
+    .annual-table th.month-col { width: 72px; }
+    .annual-table td { padding: 7px 10px; border-bottom: 1px solid #f8fafc; text-align: right; white-space: nowrap; }
+    .annual-table td.left { text-align: left; }
+    .annual-table tr.section-head td { background: #f1f5f9; font-weight: 700; font-size: 12px; color: #374151; }
+    .annual-table tr.item-row td.left { padding-left: 24px; color: #64748b; }
+    .annual-table tr.total-row td { background: #1e3a8a; color: white; font-weight: 700; }
+    .annual-table tr:hover td { background: #fafbff; }
+    .annual-table tr.section-head:hover td, .annual-table tr.total-row:hover td { background: inherit; }
+
+    /* ── 요약 대쉬보드 카드 ── */
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+    .stat-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .stat-card .s-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .s-value { font-size: 22px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .stat-card .s-sub { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+    .stat-card.blue .s-value { color: #2563eb; }
+    .stat-card.purple .s-value { color: #7c3aed; }
+    .stat-card.teal .s-value { color: #0891b2; }
+    .stat-card.green .s-value { color: #16a34a; }
+
+    /* ── 입력 테이블 ── */
+    .input-table { width: 100%; border-collapse: collapse; }
+    .input-table th { background: #f8fafc; padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 600; color: #64748b; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+    .input-table th.left { text-align: left; }
+    .input-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; text-align: right; }
+    .input-table td.left { text-align: left; }
+    .input-table input { width: 90px; padding: 4px 7px; border: 1px solid #e2e8f0; border-radius: 5px; text-align: right; font-size: 12px; }
+    .input-table input:focus { outline: none; border-color: #3b82f6; }
+    .status { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .s-재직 { background: #dcfce7; color: #16a34a; }
+    .s-입사 { background: #dbeafe; color: #2563eb; }
+    .s-퇴사 { background: #fee2e2; color: #dc2626; }
+    .s-예정 { background: #f3f4f6; color: #9ca3af; }
+    .type-원가 { color: #7c3aed; font-weight: 600; font-size: 11px; }
+    .type-판관비 { color: #0891b2; font-weight: 600; font-size: 11px; }
+    .auto-val { color: #2563eb; font-weight: 500; }
     .muted { color: #94a3b8; }
 
-    /* Status / type badges */
-    .status { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-    .status-재직  { background: #dcfce7; color: #16a34a; }
-    .status-입사  { background: #dbeafe; color: #2563eb; }
-    .status-퇴사  { background: #fee2e2; color: #dc2626; }
-    .status-휴직  { background: #fef3c7; color: #d97706; }
-    .status-예정  { background: #f3f4f6; color: #9ca3af; }
-    .type-원가    { color: #7c3aed; font-weight: 600; font-size: 11px; }
-    .type-판관비  { color: #0891b2; font-weight: 600; font-size: 11px; }
-    .tag-referral { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 700; background: #fef3c7; color: #d97706; margin-left: 4px; vertical-align: middle; }
+    /* ── 월 선택 탭 ── */
+    .month-tabs { display: flex; gap: 4px; padding: 12px 16px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; }
+    .month-tab { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #e2e8f0; color: #64748b; background: white; }
+    .month-tab.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
+    .month-tab:hover:not(.active) { background: #f1f5f9; }
 
-    /* Insurance toggle */
-    .ins-toggle { cursor: pointer; color: #3b82f6; font-size: 11px; border: none; background: none; padding: 0; }
+    /* ── 설정 ── */
+    .settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .setting-group { background: #f8fafc; border-radius: 8px; padding: 14px; }
+    .setting-group h4 { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e2e8f0; }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-row label { font-size: 12px; color: #475569; }
+    .setting-row input { width: 110px; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 5px; font-size: 12px; text-align: right; }
 
-    /* Manual input */
-    input.manual { padding: 3px 6px; border: 1px solid #e2e8f0; border-radius: 4px; text-align: right; font-size: 12px; color: #1e293b; }
-    input.manual:focus { outline: none; border-color: #3b82f6; }
-    input.edit-field { padding: 3px 6px; border: 1px solid #fbbf24; border-radius: 4px; font-size: 12px; color: #1e293b; }
-
-    /* Bonus section */
-    .bonus-table td.kind { font-weight: 600; color: #0f766e; }
-    .bonus-table td.kind-manual { color: #7c3aed; }
-    .bonus-auto-row td { background: #f0fdf4; }
-    .bonus-manual-row td { background: #fafafe; }
-    .delete-btn { color: #ef4444; cursor: pointer; font-size: 12px; border: none; background: none; padding: 2px 6px; }
-
-    /* P&L grid */
-    .pl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
-    .pl-card { background: #f8fafc; border-radius: 8px; padding: 14px; }
-    .pl-card h3 { font-size: 12px; font-weight: 700; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid; }
-    .pl-card.wonga h3  { color: #7c3aed; border-color: #7c3aed; }
-    .pl-card.pangwan h3 { color: #0891b2; border-color: #0891b2; }
-    .pl-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
-    .pl-row:last-child { border-bottom: none; }
-    .pl-row.subtotal { font-weight: 700; background: #f1f5f9; padding: 5px 8px; border-radius: 4px; margin-top: 4px; }
-    .pl-label { color: #64748b; }
-    .pl-label.sub { padding-left: 12px; color: #94a3b8; font-size: 11px; }
-    .pl-amount { font-weight: 600; font-variant-numeric: tabular-nums; }
-    .summary-bar { display: flex; gap: 0; background: #1e3a8a; border-radius: 0 0 10px 10px; }
-    .summary-item { flex: 1; text-align: center; padding: 12px; border-right: 1px solid rgba(255,255,255,0.1); }
-    .summary-item:last-child { border-right: none; }
-    .summary-item .s-label { font-size: 11px; color: rgba(255,255,255,0.6); }
-    .summary-item .s-value { font-size: 15px; font-weight: 700; color: white; font-variant-numeric: tabular-nums; margin-top: 2px; }
-
-    .note { font-size: 11px; color: #94a3b8; padding: 6px 16px 10px; }
+    /* ── 페이지 타이틀 ── */
+    .page-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #1e293b; }
+    .page-title span { font-size: 13px; font-weight: 400; color: #94a3b8; margin-left: 8px; }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <div>
-    <h1>예상 P&L — 인건비 관리</h1>
-    <div class="subtitle">급여 · 4대보험 · 상여 · 채용수수료 통합 계산</div>
-  </div>
-  <div class="month-selector">
-    <select id="selYear"><option value="2026" selected>2026년</option><option value="2027">2027년</option></select>
-    <select id="selMonth">
-      <option value="1">1월</option><option value="2">2월</option><option value="3" selected>3월</option>
-      <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
-      <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
-      <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
-    </select>
+<!-- 상단 헤더 -->
+<div class="top-bar">
+  <h1>예상 P&L 시스템</h1>
+  <div class="year-select">
+    <select id="selYear"><option>2026년</option><option>2027년</option></select>
+    <button class="pdf-btn" onclick="alert('PDF 출력 기능 (구현 예정)')">📄 PDF 출력</button>
   </div>
 </div>
 
-<div class="container">
+<div class="layout">
 
-<!-- 설정 -->
-<div class="settings-panel">
-  <div class="settings-header" onclick="toggleSettings()">
-    <h3>⚙ 설정값 (요율 · 환율 · 상여)</h3>
-    <span id="settingsToggle" style="font-size:12px;color:#94a3b8">▲ 접기</span>
-  </div>
-  <div class="settings-body" id="settingsBody">
-    <div class="setting-group">
-      <h4>4대보험 요율 (회사 부담)</h4>
-      <div class="setting-row"><label>건강보험</label><input type="number" id="r_health"  value="3.545" step="0.001"><span class="unit">%</span></div>
-      <div class="setting-row"><label>장기요양 (건강보험료 ×)</label><input type="number" id="r_ltc"    value="12.95" step="0.01"><span class="unit">%</span></div>
-      <div class="setting-row"><label>고용보험</label><input type="number" id="r_employ" value="0.9"   step="0.01"><span class="unit">%</span></div>
-      <div class="setting-row"><label>국민연금</label><input type="number" id="r_pension" value="4.5"  step="0.01"><span class="unit">%</span></div>
+  <!-- 사이드바 -->
+  <div class="sidebar">
+    <div class="sidebar-section">대쉬보드</div>
+    <div class="sidebar-item active" onclick="nav('annual')">
+      <span class="icon">📊</span> 연간 P&L
     </div>
-    <div class="setting-group">
-      <h4>국민연금 한도</h4>
-      <div class="setting-row"><label>상한 (월)</label><input type="number" id="pension_max" value="617700"><span class="unit">원</span></div>
-      <div class="setting-row"><label>하한 (월)</label><input type="number" id="pension_min" value="35100"><span class="unit">원</span></div>
+    <div class="sidebar-item" onclick="nav('summary')">
+      <span class="icon">📋</span> 항목별 요약
     </div>
-    <div class="setting-group">
-      <h4>환율 · 채용</h4>
-      <div class="setting-row"><label>USD/KRW 환율</label><input type="number" id="fx_usd"    value="1530"><span class="unit">원</span></div>
-      <div class="setting-row"><label>채용수수료 예산 요율</label><input type="number" id="r_recruit"  value="15" step="1"><span class="unit">%</span></div>
-    </div>
-    <div class="setting-group">
-      <h4>상여</h4>
-      <div class="setting-row"><label>장기근속포상 (1인)</label><input type="number" id="long_service" value="2000000"><span class="unit">원</span></div>
-      <div class="setting-row"><label>상여충당부채 월 총액</label><input type="number" id="provision_total" value="2500000"><span class="unit">원</span></div>
-    </div>
-  </div>
-</div>
 
-<!-- 인건비 계산 테이블 -->
-<div class="section">
-  <div class="section-header">
-    <h2>인건비 계산</h2>
-    <span class="badge" id="emp_count"></span>
-    <div class="actions">
-      <button class="btn btn-ghost btn-sm" onclick="toggleIns()">보험 상세 <span id="insToggleLabel">▼ 펼치기</span></button>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">월별 입력</div>
+
+    <div class="month-toggle open" onclick="toggleMonths(this)">
+      <span>월 선택</span><span class="arrow">▾</span>
+    </div>
+    <div class="sidebar-month-group" id="monthGroup">
+      <div class="sidebar-sub" onclick="navMonth('인건비',1)">1월 인건비</div>
+      <div class="sidebar-sub" onclick="navMonth('인건비',2)">2월 인건비</div>
+      <div class="sidebar-sub active" onclick="navMonth('인건비',3)">3월 인건비</div>
+      <div class="sidebar-sub" onclick="navMonth('상여',3)">3월 상여</div>
+      <div class="sidebar-sub" onclick="navMonth('월비용',3)">3월 월비용</div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-item" onclick="nav('settings')">
+      <span class="icon">⚙</span> 설정
     </div>
   </div>
-  <div class="table-wrap">
-    <table id="empTable">
-      <thead id="empHead"></thead>
-      <tbody id="empBody"></tbody>
-      <tfoot id="empFoot"></tfoot>
-    </table>
-  </div>
-  <div class="note">
-    <span style="color:#3b82f6">■</span> 파란색 = 자동계산 &nbsp;|&nbsp;
-    <span style="background:#fef3c7;padding:1px 4px;border-radius:3px;font-size:10px;color:#d97706;font-weight:700">추천</span> = 사내추천 입사 &nbsp;|&nbsp;
-    ✏ 흰 칸 = 수기 입력
-  </div>
-</div>
 
-<!-- 이번 달 상여 -->
-<div class="section">
-  <div class="section-header">
-    <h2>이번 달 상여</h2>
-    <span class="badge badge-green" id="bonus_count"></span>
-    <div class="actions">
-      <button class="btn btn-primary btn-sm" onclick="addManualBonus()">+ 수기 추가</button>
+  <!-- 메인 -->
+  <div class="main">
+
+    <!-- 연간 P&L 대쉬보드 -->
+    <div class="page active" id="page-annual">
+      <div class="page-title">연간 P&L <span>2026년 월별 예상</span></div>
+      <div class="card">
+        <div class="card-header">
+          <h2>손익계산서</h2>
+          <span class="badge">단위: 천원</span>
+        </div>
+        <div class="annual-table-wrap">
+          <table class="annual-table">
+            <thead>
+              <tr>
+                <th class="left" style="width:160px">항목</th>
+                <th class="month-col">1월</th><th class="month-col">2월</th><th class="month-col">3월</th>
+                <th class="month-col">4월</th><th class="month-col">5월</th><th class="month-col">6월</th>
+                <th class="month-col">7월</th><th class="month-col">8월</th><th class="month-col">9월</th>
+                <th class="month-col">10월</th><th class="month-col">11월</th><th class="month-col">12월</th>
+                <th style="width:80px;background:#f1f5f9">합계</th>
+              </tr>
+            </thead>
+            <tbody id="annualBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="table-wrap">
-    <table class="bonus-table">
-      <thead>
-        <tr>
-          <th class="left" style="width:110px">이름</th>
-          <th class="left" style="width:110px">분류</th>
-          <th class="left" style="width:140px">상여 종류</th>
-          <th style="width:120px">금액</th>
-          <th class="left">비고</th>
-          <th style="width:60px"></th>
-        </tr>
-      </thead>
-      <tbody id="bonusBody"></tbody>
-      <tfoot id="bonusFoot"></tfoot>
-    </table>
-  </div>
-  <div class="note">자동 계산 행(초록) = 입사일 기준 산출 &nbsp;|&nbsp; 수기 행(흰색) = 직접 입력</div>
-</div>
 
-<!-- 월 비용 -->
-<div class="section">
-  <div class="section-header">
-    <h2>월 비용</h2>
-    <span class="badge" id="cost_total_badge"></span>
-  </div>
-  <div class="table-wrap">
-    <table id="costTable">
-      <thead>
-        <tr>
-          <th class="left" style="width:80px">구분</th>
-          <th class="left" style="width:130px">항목</th>
-          <th class="left" style="width:70px">유형</th>
-          <th style="width:120px">단가</th>
-          <th style="width:90px">인원수</th>
-          <th style="width:130px">월 금액 (원)</th>
-        </tr>
-      </thead>
-      <tbody id="costBody"></tbody>
-      <tfoot id="costFoot"></tfoot>
-    </table>
-  </div>
-  <div class="note">USD 항목은 설정의 환율 자동 적용 &nbsp;|&nbsp; 인원수 칸이 있는 항목만 수기 입력</div>
-</div>
+    <!-- 항목별 요약 대쉬보드 -->
+    <div class="page" id="page-summary">
+      <div class="page-title">항목별 요약 <span>2026년 3월 기준</span></div>
+      <div class="summary-grid">
+        <div class="stat-card blue">
+          <div class="s-label">이번 달 인건비 합계</div>
+          <div class="s-value">284,320<span style="font-size:14px">천원</span></div>
+          <div class="s-sub">원가 198,240 / 판관비 86,080</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="s-label">이번 달 상여</div>
+          <div class="s-value">4,000<span style="font-size:14px">천원</span></div>
+          <div class="s-sub">장기근속 0건 / 추천포상 1건</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="s-label">이번 달 월 비용</div>
+          <div class="s-value">12,480<span style="font-size:14px">천원</span></div>
+          <div class="s-sub">원가 9,180 / 판관비 3,300</div>
+        </div>
+        <div class="stat-card green">
+          <div class="s-label">재직 인원</div>
+          <div class="s-value">8<span style="font-size:14px">명</span></div>
+          <div class="s-sub">원가 3명 / 판관비 5명</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="s-label">채용수수료 (이번 달)</div>
+          <div class="s-value">6,750<span style="font-size:14px">천원</span></div>
+          <div class="s-sub">예산 기준 (실제 미입력)</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="s-label">이번 달 합계</div>
+          <div class="s-value">307,550<span style="font-size:14px">천원</span></div>
+          <div class="s-sub">원가 + 판관비 전체</div>
+        </div>
+      </div>
 
-<!-- P&L 요약 -->
-<div class="section">
-  <div class="section-header">
-    <h2>P&L 반영 요약</h2>
-    <span class="badge" id="pl_month_label"></span>
-  </div>
-  <div class="pl-grid" id="plGrid"></div>
-  <div class="summary-bar" id="summaryBar"></div>
-</div>
+      <div class="card">
+        <div class="card-header"><h2>원가 / 판관비 상세</h2></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          <div style="padding:16px;border-right:1px solid #f1f5f9">
+            <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:10px">원가</div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">급여</span><span>162,450</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">4대보험</span><span>35,790</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">채용수수료</span><span>6,750</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">상여충당부채</span><span>2,062</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">월 비용</span><span>9,180</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700"><span>소계</span><span style="color:#7c3aed">216,232</span></div>
+          </div>
+          <div style="padding:16px">
+            <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:10px">판관비</div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">임원급여</span><span>13,417</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">직원급여</span><span>55,250</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">4대보험</span><span>17,413</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">상여 (추천포상금)</span><span>4,000</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">상여충당부채</span><span>438</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px"><span class="muted">월 비용</span><span>3,300</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700"><span>소계</span><span style="color:#0891b2">93,818</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-</div><!-- /container -->
+    <!-- 인건비 입력 -->
+    <div class="page" id="page-input">
+      <div class="page-title" id="inputTitle">인건비 입력 <span>3월</span></div>
+      <div class="card">
+        <div class="month-tabs" id="inputTabs">
+          <div class="month-tab active">인건비</div>
+          <div class="month-tab" onclick="switchTab(this,'상여')">상여</div>
+          <div class="month-tab" onclick="switchTab(this,'월비용')">월 비용</div>
+        </div>
+
+        <!-- 인건비 탭 -->
+        <div id="tab-인건비">
+          <div style="overflow-x:auto">
+            <table class="input-table">
+              <thead>
+                <tr>
+                  <th class="left">이름</th><th class="left">분류</th><th class="left">상태</th>
+                  <th>연봉</th><th>과세급여</th><th>급여(일할)</th>
+                  <th>4대보험</th><th>채용수수료</th><th>수기조정</th><th>합계</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="left"><b>김민준</b></td><td class="left"><span class="type-원가">원가(직원)</span></td><td class="left"><span class="status s-재직">재직</span></td><td class="muted">5,200만</td><td class="auto-val">3,633</td><td class="auto-val">4,333</td><td class="auto-val">801</td><td class="muted">-</td><td><input type="number" placeholder="0"></td><td class="auto-val">5,134</td></tr>
+                <tr><td class="left"><b>이서연</b> <span style="font-size:10px;background:#fef3c7;padding:1px 4px;border-radius:3px;color:#d97706;font-weight:700">추천</span></td><td class="left"><span class="type-원가">원가(직원)</span></td><td class="left"><span class="status s-재직">재직</span></td><td class="muted">4,800만</td><td class="auto-val">3,800</td><td class="auto-val">4,000</td><td class="auto-val">734</td><td class="muted">-</td><td><input type="number" placeholder="0"></td><td class="auto-val">4,734</td></tr>
+                <tr><td class="left"><b>박준호</b></td><td class="left"><span class="type-판관비">판관비(임원)</span></td><td class="left"><span class="status s-재직">재직</span></td><td class="muted">15,000만</td><td class="auto-val">12,500</td><td class="auto-val">12,500</td><td class="auto-val">917</td><td class="muted">-</td><td><input type="number" placeholder="0"></td><td class="auto-val">13,417</td></tr>
+                <tr><td class="left"><b>강지훈</b></td><td class="left"><span class="type-원가">원가(직원)</span></td><td class="left"><span class="status s-입사">입사</span></td><td class="muted">4,500만</td><td class="auto-val">3,542</td><td class="auto-val">3,105</td><td class="muted">-</td><td class="auto-val">6,750</td><td><input type="number" placeholder="0"></td><td class="auto-val">9,855</td></tr>
+                <tr><td class="left"><b>한소희</b></td><td class="left"><span class="type-판관비">판관비(직원)</span></td><td class="left"><span class="status s-퇴사">퇴사</span></td><td class="muted">4,500만</td><td class="auto-val">3,542</td><td class="auto-val">2,903</td><td class="auto-val">659</td><td class="muted">-</td><td><input type="number" placeholder="0"></td><td class="auto-val">3,562</td></tr>
+                <tr style="background:#f8fafc;font-weight:700"><td class="left" colspan="5">합계</td><td class="auto-val">26,841</td><td class="auto-val">3,111</td><td class="auto-val">6,750</td><td></td><td class="auto-val">36,702</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 상여 탭 -->
+        <div id="tab-상여" style="display:none;padding:16px">
+          <table class="input-table">
+            <thead><tr><th class="left">이름</th><th class="left">분류</th><th class="left">상여 종류</th><th>금액</th><th class="left">비고</th></tr></thead>
+            <tbody>
+              <tr style="background:#f0fdf4"><td class="left"><b>정다인</b></td><td class="left"><span class="type-판관비">판관비(직원)</span></td><td class="left" style="color:#0f766e;font-weight:600">사내추천 포상금</td><td class="auto-val">4,000</td><td class="left muted">경력 6년 (5년 초과) — 자동계산</td></tr>
+              <tr><td class="left" colspan="2"><input style="width:120px" placeholder="이름"></td><td class="left"><input style="width:130px" placeholder="상여 종류"></td><td><input type="number" placeholder="금액"></td><td class="left"><input style="width:160px" placeholder="비고"></td></tr>
+            </tbody>
+          </table>
+          <button style="margin-top:10px;padding:5px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;font-size:12px">+ 행 추가</button>
+        </div>
+
+        <!-- 월비용 탭 -->
+        <div id="tab-월비용" style="display:none;padding:16px">
+          <table class="input-table">
+            <thead><tr><th class="left">구분</th><th class="left">항목</th><th class="left">유형</th><th>단가</th><th>인원수</th><th>월 금액</th></tr></thead>
+            <tbody>
+              <tr><td class="left"><span class="type-원가">원가</span></td><td class="left"><b>Claude</b></td><td class="left muted">인원별</td><td class="muted">$150 × 1,530원</td><td><input type="number" placeholder="0" style="width:60px"> 명</td><td class="auto-val">—</td></tr>
+              <tr><td class="left"><span class="type-원가">원가</span></td><td class="left"><b>ChatGPT</b></td><td class="left muted">인원별</td><td class="muted">$15 × 1,530원</td><td><input type="number" placeholder="0" style="width:60px"> 명</td><td class="auto-val">—</td></tr>
+              <tr><td class="left"><span class="type-판관비">판관비</span></td><td class="left"><b>세무자문</b></td><td class="left muted">고정</td><td class="muted">300,000원</td><td class="muted">-</td><td class="auto-val">300</td></tr>
+              <tr><td class="left"><span class="type-판관비">판관비</span></td><td class="left"><b>노무자문</b></td><td class="left muted">고정</td><td class="muted">150,000원</td><td class="muted">-</td><td class="auto-val">150</td></tr>
+              <tr><td class="left"><span class="type-판관비">판관비</span></td><td class="left"><b>근태소프트</b></td><td class="left muted">인원별</td><td class="muted">3,500원</td><td><input type="number" placeholder="0" style="width:60px"> 명</td><td class="auto-val">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 설정 -->
+    <div class="page" id="page-settings">
+      <div class="page-title">설정</div>
+      <div class="card">
+        <div class="card-header"><h2>요율 · 환율 · 상여</h2></div>
+        <div class="card-body">
+          <div class="settings-grid">
+            <div class="setting-group">
+              <h4>4대보험 요율 (회사 부담)</h4>
+              <div class="setting-row"><label>건강보험</label><input value="3.545">%</div>
+              <div class="setting-row"><label>장기요양 (건강보험료 ×)</label><input value="12.95">%</div>
+              <div class="setting-row"><label>고용보험</label><input value="0.9">%</div>
+              <div class="setting-row"><label>국민연금</label><input value="4.5">%</div>
+            </div>
+            <div class="setting-group">
+              <h4>국민연금 한도</h4>
+              <div class="setting-row"><label>상한 (월)</label><input value="617,700">원</div>
+              <div class="setting-row"><label>하한 (월)</label><input value="35,100">원</div>
+            </div>
+            <div class="setting-group">
+              <h4>환율 · 채용</h4>
+              <div class="setting-row"><label>USD/KRW 환율</label><input value="1,530">원</div>
+              <div class="setting-row"><label>채용수수료 예산 요율</label><input value="15">%</div>
+            </div>
+            <div class="setting-group">
+              <h4>상여</h4>
+              <div class="setting-row"><label>장기근속포상 (1인)</label><input value="2,000,000">원</div>
+              <div class="setting-row"><label>상여충당부채 월 총액</label><input value="2,500,000">원</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
 
 <script>
-// ─── 직원 데이터 ──────────────────────────────────────────────────────────────
-const employees = [
-  { id:'E001', name:'김민준',  type:'원가(직원)',   salary:52000000,  nonTax:200000, joinDate:'2022-03-15', status:'재직',  pensionBase:4200000, referral:false, expYears:0 },
-  { id:'E002', name:'이서연',  type:'원가(직원)',   salary:48000000,  nonTax:200000, joinDate:'2021-07-01', status:'재직',  pensionBase:3800000, referral:true,  expYears:4 },
-  { id:'E003', name:'박준호',  type:'판관비(임원)', salary:150000000, nonTax:0,      joinDate:'2020-01-01', status:'재직',  pensionBase:null,    referral:false, expYears:0 },
-  { id:'E004', name:'최지은',  type:'판관비(직원)', salary:42000000,  nonTax:200000, joinDate:'2023-01-15', status:'재직',  pensionBase:3300000, referral:false, expYears:0 },
-  { id:'E005', name:'정다인',  type:'판관비(직원)', salary:38000000,  nonTax:200000, joinDate:'2024-09-01', status:'재직',  pensionBase:2900000, referral:true,  expYears:6 },
-  { id:'E006', name:'강지훈',  type:'원가(직원)',   salary:45000000,  nonTax:200000, joinDate:'2026-03-10', status:'입사',  pensionBase:null,    referral:false, expYears:0 },
-  { id:'E007', name:'윤하은',  type:'판관비(직원)', salary:36000000,  nonTax:200000, joinDate:'2026-03-22', status:'입사',  pensionBase:null,    referral:true,  expYears:5 },
-  { id:'E008', name:'한소희',  type:'판관비(직원)', salary:45000000,  nonTax:200000, joinDate:'2024-06-15', status:'퇴사',  pensionBase:3500000, referral:false, expYears:0, termDate:'2026-03-20' },
-  { id:'E009', name:'2026-07', type:'원가(직원)',   salary:50000000,  nonTax:200000, joinDate:'2026-07-01', status:'예정',  pensionBase:null,    referral:false, expYears:0 },
+// ── 연간 PL 샘플 데이터 ─────────────────────────────────────────────────────
+const plItems = [
+  { label:'원가', isSection:true },
+  { label:'  급여', vals:[152,152,163,152,152,163,162,152,152,152,152,163] },
+  { label:'  4대보험', vals:[35,35,36,35,35,36,35,35,35,35,35,36] },
+  { label:'  채용수수료', vals:[0,0,7,0,8,0,0,0,0,0,0,0] },
+  { label:'  상여충당부채', vals:[2,2,2,2,2,2,2,2,2,2,2,2] },
+  { label:'  월 비용', vals:[9,9,9,9,9,9,9,9,9,9,9,9] },
+  { label:'판관비', isSection:true },
+  { label:'  임원급여+보험', vals:[13,13,13,13,13,13,13,13,13,13,13,13] },
+  { label:'  직원급여+보험', vals:[72,72,73,72,72,73,72,72,72,72,72,73] },
+  { label:'  상여', vals:[0,0,4,0,0,8,0,0,4,0,0,0] },
+  { label:'  상여충당부채', vals:[0,0,0,0,0,0,0,0,0,0,0,0] },
+  { label:'  월 비용', vals:[3,3,3,3,3,3,3,3,3,3,3,3] },
 ];
 
-let showInsDetail = false;
-let manualBonuses = [];
-let bonusIdSeq = 0;
+function buildAnnual() {
+  const body = document.getElementById('annualBody');
+  let rows = '';
+  let totals = Array(12).fill(0);
 
-// ─── 월 비용 데이터 ───────────────────────────────────────────────────────────
-const monthlyCosts = [
-  { cat:'원가',  name:'Claude',    usd:150,  krw:0,      perPerson:true,  count:0 },
-  { cat:'원가',  name:'ChatGPT',   usd:15,   krw:0,      perPerson:true,  count:0 },
-  { cat:'원가',  name:'GitHub',    usd:10,   krw:0,      perPerson:true,  count:0 },
-  { cat:'원가',  name:'Tailscale', usd:10,   krw:0,      perPerson:true,  count:0 },
-  { cat:'판관비', name:'Claude',   usd:20,   krw:0,      perPerson:true,  count:0 },
-  { cat:'판관비', name:'세무자문', usd:0,    krw:300000, perPerson:false, count:1 },
-  { cat:'판관비', name:'노무자문', usd:0,    krw:150000, perPerson:false, count:1 },
-  { cat:'판관비', name:'근태소프트',usd:0,   krw:3500,   perPerson:true,  count:0 },
-];
-
-// ─── 설정값 ──────────────────────────────────────────────────────────────────
-function getS() {
-  return {
-    rHealth:  parseFloat(document.getElementById('r_health').value)  / 100,
-    rLtc:     parseFloat(document.getElementById('r_ltc').value)     / 100,
-    rEmploy:  parseFloat(document.getElementById('r_employ').value)  / 100,
-    rPension: parseFloat(document.getElementById('r_pension').value) / 100,
-    pensionMax: parseFloat(document.getElementById('pension_max').value),
-    pensionMin: parseFloat(document.getElementById('pension_min').value),
-    fxUsd:       parseFloat(document.getElementById('fx_usd').value),
-    rRecruit:    parseFloat(document.getElementById('r_recruit').value) / 100,
-    longService: parseFloat(document.getElementById('long_service').value),
-    provTotal:   parseFloat(document.getElementById('provision_total').value),
-  };
-}
-
-function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
-function getCat(type) { return type.startsWith('원가') ? '원가' : '판관비'; }
-
-// ─── 직원별 급여 + 4대보험 ────────────────────────────────────────────────────
-function calcEmp(emp, year, month, s) {
-  const totalDays = daysInMonth(year, month);
-  const jd = new Date(emp.joinDate);
-  const jY = jd.getFullYear(), jM = jd.getMonth()+1, jD = jd.getDate();
-  const base = emp.salary / 12;
-  const taxable = base - emp.nonTax;
-  let salary = 0, note = '', insuranceApplies = false;
-
-  let eff = emp.status;
-  if (emp.status === '예정') {
-    if (year < jY || (year === jY && month < jM))
-      return { salary:0, health:0, ltc:0, employ:0, pension:0, insTotal:0, note:'예정 입사자', isFuture:true, eff:'예정' };
-    eff = (year === jY && month === jM) ? '입사' : '재직';
-    note = `예정→${eff} 자동반영`;
-  }
-
-  if (eff === '재직') {
-    salary = base; insuranceApplies = true;
-
-  } else if (eff === '입사') {
-    const isJoinMonth = (jY === year && jM === month);
-    if (isJoinMonth) {
-      if (jD <= 20) {
-        const wd = totalDays - jD + 1;
-        salary = Math.round(base * wd / totalDays);
-        note = (note ? note + ' / ' : '') + `${jD}일 입사, ${wd}일 근무`;
-        insuranceApplies = (jD === 1);
-        if (!insuranceApplies) note += ' (4대보험 익월)';
-      } else {
-        salary = 0; insuranceApplies = false;
-        note = `${jD}일 입사 → 당월 미지급, 익월 소급`;
-      }
-    } else { salary = base; insuranceApplies = true; }
-
-  } else if (eff === '퇴사') {
-    const td = new Date(emp.termDate);
-    const tY = td.getFullYear(), tM = td.getMonth()+1, tD = td.getDate();
-    if (tY === year && tM === month) {
-      salary = Math.round(base * tD / totalDays);
-      note = `${tD}일 퇴사, 일할 ${tD}/${totalDays}`;
-    }
-    insuranceApplies = true;
-
-  } else if (eff === '휴직') {
-    const hd = new Date(emp.termDate || emp.joinDate);
-    salary = Math.round(base * (hd.getDate()-1) / totalDays);
-    note = '휴직 일할계산'; insuranceApplies = true;
-  }
-
-  let health=0, ltc=0, employ=0, pension=0;
-  if (insuranceApplies) {
-    health  = Math.round(taxable * s.rHealth);
-    ltc     = Math.round(health  * s.rLtc);
-    employ  = Math.round(taxable * s.rEmploy);
-    const pb = emp.pensionBase || taxable;
-    pension = Math.min(Math.max(Math.round(pb * s.rPension), s.pensionMin), s.pensionMax);
-  }
-  return { salary, health, ltc, employ, pension, insTotal:health+ltc+employ+pension, note, isFuture:false, eff };
-}
-
-// ─── 채용수수료 (입사월만) ─────────────────────────────────────────────────────
-function recruitFee(emp, year, month, s) {
-  const jd = new Date(emp.joinDate);
-  if (jd.getFullYear()===year && jd.getMonth()+1===month && emp.status !== '예정')
-    return Math.round(emp.salary * s.rRecruit);
-  return 0;
-}
-
-// ─── 이번 달 자동 상여 ────────────────────────────────────────────────────────
-function calcAutoBonuses(year, month, s) {
-  const list = [];
-  employees.forEach(emp => {
-    if (emp.status === '예정') return;
-    const jd = new Date(emp.joinDate);
-    const jY = jd.getFullYear(), jM = jd.getMonth()+1;
-
-    // 장기근속포상: 입사 3년 후, 1~6월입사→6월, 7~12월입사→12월
-    const awardM = jM <= 6 ? 6 : 12;
-    if (year === jY+3 && month === awardM)
-      list.push({ name:emp.name, type:emp.type, kind:'장기근속포상', amount:s.longService, note:`입사 ${jY}.${String(jM).padStart(2,'0')} → 3년` });
-
-    // 사내추천 포상금: 입사 6개월 후
-    if (emp.referral && emp.expYears >= 3) {
-      let pY = jY, pM = jM + 6;
-      if (pM > 12) { pY++; pM -= 12; }
-      if (year === pY && month === pM) {
-        const amt = emp.expYears <= 5 ? 4000000 : 8000000;
-        list.push({ name:emp.name, type:emp.type, kind:'사내추천 포상금', amount:amt, note:`경력 ${emp.expYears}년 (${emp.expYears<=5?'3~5년':'5년 초과'})` });
-      }
-    }
-  });
-  return list;
-}
-
-// ─── 포맷 ─────────────────────────────────────────────────────────────────────
-function fmt(n)  { return (!n||n===0) ? '<span class="zero">-</span>' : `<span class="auto">${Math.round(n).toLocaleString('ko-KR')}</span>`; }
-function fmtN(n) { return Math.round(n).toLocaleString('ko-KR'); }
-
-// ─── 메인 렌더 ────────────────────────────────────────────────────────────────
-function render() {
-  const year  = parseInt(document.getElementById('selYear').value);
-  const month = parseInt(document.getElementById('selMonth').value);
-  const s     = getS();
-  document.getElementById('pl_month_label').textContent = `${year}년 ${month}월`;
-
-  // ── 헤더 ──
-  const insDetailCols = showInsDetail
-    ? `<th>건강보험<br>(회사)</th><th>장기요양<br>(회사)</th><th>고용보험<br>(회사)</th><th>국민연금<br>(회사)</th><th>4대보험<br>합계</th>`
-    : `<th>4대보험<br>합계</th>`;
-  document.getElementById('empHead').innerHTML = `<tr>
-    <th class="left" style="width:120px">이름</th>
-    <th class="left" style="width:100px">분류</th>
-    <th class="left" style="width:65px">상태</th>
-    <th>연봉</th><th>비과세(월)</th><th>과세급여</th>
-    <th>급여<br>(일할)</th>
-    ${insDetailCols}
-    <th>채용수수료<br>예산</th><th>채용수수료<br>실제</th>
-    <th>수기조정</th><th>합계</th>
-  </tr>`;
-
-  const body = document.getElementById('empBody');
-  const foot = document.getElementById('empFoot');
-  body.innerHTML = '';
-
-  let totSalary=0, totIns=0, totRecruit=0;
-  let wSalary=0, wIns=0, wRecruit=0, wCount=0;
-  let eSalary=0, eIns=0, eRecruit=0, eCount=0;
-  let pSalary=0, pIns=0, pRecruit=0, pCount=0;
-
-  employees.forEach((emp, idx) => {
-    const c = calcEmp(emp, year, month, s);
-    const isFuture = c.isFuture;
-    const cat = getCat(emp.type);
-    const rFee = recruitFee(emp, year, month, s);
-    const adjId = `adj_${idx}`;
-    const realRecruitId = `rr_${idx}`;
-    const adj = parseFloat(document.getElementById(adjId)?.value||0)||0;
-    const realRecruit = parseFloat(document.getElementById(realRecruitId)?.value||'')||null;
-    const displayRecruit = realRecruit !== null ? realRecruit : rFee;
-
-    const insDetailCells = showInsDetail
-      ? `${fmt(c.health)}${fmt(c.ltc)}${fmt(c.employ)}${fmt(c.pension)}${fmt(c.insTotal)}`
-        .replace(/<span/g,'<td><span').replace(/<\/span>/g,'</span></td>')
-        .split('</td>').filter(x=>x).map(x=>x+'</td>').join('')
-      : `<td>${fmt(c.insTotal)}</td>`;
-
-    const tr = document.createElement('tr');
-    tr.className = isFuture ? 'pending-row' : '';
-
-    const referralBadge = emp.referral ? '<span class="tag-referral">추천</span>' : '';
-    const expTag = emp.expYears > 0 ? `<span style="font-size:10px;color:#94a3b8;margin-left:3px">경력${emp.expYears}년</span>` : '';
-
-    if (isFuture) {
-      const colSpan = showInsDetail ? 13 : 10;
-      tr.innerHTML = `
-        <td class="left"><input type="text" class="edit-field" value="${emp.name}" onchange="updateEmp(${idx},'name',this.value)" style="width:85px">
-          <select onchange="updateEmp(${idx},'referral',this.value==='Y')" style="margin-left:4px;padding:2px 4px;border:1px solid #fbbf24;border-radius:3px;font-size:10px">
-            <option value="N" ${!emp.referral?'selected':''}>일반</option>
-            <option value="Y" ${emp.referral?'selected':''}>추천</option>
-          </select>
-        </td>
-        <td class="left">
-          <select onchange="updateEmp(${idx},'type',this.value)" style="padding:2px 4px;border:1px solid #fbbf24;border-radius:3px;font-size:11px;font-weight:600;color:#7c3aed">
-            <option value="원가(직원)"  ${emp.type==='원가(직원)'  ?'selected':''}>원가(직원)</option>
-            <option value="판관비(임원)"${emp.type==='판관비(임원)'?'selected':''}>판관비(임원)</option>
-            <option value="판관비(직원)"${emp.type==='판관비(직원)'?'selected':''}>판관비(직원)</option>
-          </select>
-        </td>
-        <td class="left"><span class="status status-예정">예정</span></td>
-        <td><input type="number" class="edit-field manual" value="${emp.salary}" onchange="updateEmp(${idx},'salary',+this.value)" style="width:85px"></td>
-        <td><input type="number" class="edit-field manual" value="${emp.nonTax}" onchange="updateEmp(${idx},'nonTax',+this.value)" style="width:70px"></td>
-        <td colspan="2"><input type="date" class="edit-field" value="${emp.joinDate}" onchange="updateEmp(${idx},'joinDate',this.value)">
-          <input type="number" class="edit-field manual" value="${emp.expYears}" onchange="updateEmp(${idx},'expYears',+this.value)" style="width:45px" placeholder="경력년">
-        </td>
-        <td colspan="${colSpan}" style="text-align:center;color:#cbd5e1;font-size:11px">— 예정 입사자 (해당월부터 자동 반영) —</td>
-      `;
+  plItems.forEach(item => {
+    if (item.isSection) {
+      rows += `<tr class="section-head"><td class="left" colspan="14" style="padding-left:12px">${item.label}</td></tr>`;
     } else {
-      tr.innerHTML = `
-        <td class="left"><b>${emp.name}</b>${referralBadge}${expTag}
-          ${c.note ? `<div style="font-size:10px;color:#f59e0b;margin-top:1px">${c.note}</div>` : ''}
-        </td>
-        <td class="left"><span class="${cat==='원가'?'type-원가':'type-판관비'}">${emp.type}</span></td>
-        <td class="left"><span class="status status-${c.eff}">${c.eff}</span></td>
-        <td>${(emp.salary/10000).toLocaleString()}만</td>
-        <td class="muted">${emp.nonTax?(emp.nonTax/10000).toFixed(1)+'만':'-'}</td>
-        <td>${fmt(emp.salary/12-emp.nonTax)}</td>
-        <td>${fmt(c.salary)}</td>
-        ${insDetailCells}
-        <td>${rFee ? fmt(rFee) : '<span class="zero">-</span>'}</td>
-        <td>${rFee ? `<input class="manual" type="number" id="${realRecruitId}" placeholder="실제입력" onchange="render()" style="width:80px">` : '<span class="zero">-</span>'}</td>
-        <td><input class="manual" type="number" id="${adjId}" placeholder="0" onchange="render()" style="width:75px"></td>
-        <td style="font-weight:700">${fmt(c.salary + c.insTotal + displayRecruit + adj)}</td>
-      `;
-
-      totSalary += c.salary; totIns += c.insTotal; totRecruit += displayRecruit;
-      if (emp.type === '원가(직원)')   { wSalary+=c.salary; wIns+=c.insTotal; wRecruit+=displayRecruit; wCount++; }
-      else if (emp.type==='판관비(임원)') { eSalary+=c.salary; eIns+=c.insTotal; eRecruit+=displayRecruit; eCount++; }
-      else                             { pSalary+=c.salary; pIns+=c.insTotal; pRecruit+=displayRecruit; pCount++; }
+      const sum = item.vals.reduce((a,b)=>a+b,0);
+      item.vals.forEach((v,i) => totals[i] += v);
+      rows += `<tr class="item-row">
+        <td class="left">${item.label}</td>
+        ${item.vals.map(v => `<td>${v ? v.toLocaleString() : '<span style="color:#cbd5e1">-</span>'}</td>`).join('')}
+        <td style="font-weight:600;background:#f8fafc">${sum.toLocaleString()}</td>
+      </tr>`;
     }
-    body.appendChild(tr);
   });
 
-  const futureCount = employees.filter(e=>e.status==='예정').length;
-  const activeCount = employees.length - futureCount;
-  document.getElementById('emp_count').textContent = `재직/입사/퇴사 ${activeCount}명 + 예정 ${futureCount}명`;
-
-  const insDetailFoot = showInsDetail
-    ? `<td></td><td></td><td></td><td></td><td class="auto">${fmtN(totIns)}</td>`
-    : `<td class="auto">${fmtN(totIns)}</td>`;
-  foot.innerHTML = `<tr class="subtotal-row">
-    <td class="left" colspan="7" style="text-align:left;color:#475569">합 계</td>
-    ${insDetailFoot}
-    <td></td><td></td><td></td>
-    <td class="auto">${fmtN(totSalary+totIns+totRecruit)}</td>
+  const grandTotal = totals.reduce((a,b)=>a+b,0);
+  rows += `<tr class="total-row">
+    <td class="left">합 계</td>
+    ${totals.map(v=>`<td>${v.toLocaleString()}</td>`).join('')}
+    <td>${grandTotal.toLocaleString()}</td>
   </tr>`;
+  body.innerHTML = rows;
+}
 
-  // ── 상여 섹션 ──
-  const autoBonuses = calcAutoBonuses(year, month, s);
-  const bonusBody = document.getElementById('bonusBody');
-  bonusBody.innerHTML = '';
+// ── 네비게이션 ────────────────────────────────────────────────────────────────
+let currentPage = 'annual';
 
-  autoBonuses.forEach(b => {
-    const tr = document.createElement('tr');
-    tr.className = 'bonus-auto-row';
-    tr.innerHTML = `
-      <td class="left"><b>${b.name}</b></td>
-      <td class="left"><span class="${getCat(b.type)==='원가'?'type-원가':'type-판관비'}">${b.type}</span></td>
-      <td class="left kind">${b.kind}</td>
-      <td class="auto">${fmtN(b.amount)}</td>
-      <td class="left muted">${b.note}</td>
-      <td><span style="font-size:10px;color:#94a3b8">자동</span></td>
-    `;
-    bonusBody.appendChild(tr);
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.sidebar-sub').forEach(i => i.classList.remove('active'));
+
+  if (page === 'annual')   { document.getElementById('page-annual').classList.add('active'); }
+  if (page === 'summary')  { document.getElementById('page-summary').classList.add('active'); }
+  if (page === 'settings') { document.getElementById('page-settings').classList.add('active'); }
+
+  event?.currentTarget?.classList.add('active');
+  currentPage = page;
+}
+
+function navMonth(tab, month) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-sub').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('page-input').classList.add('active');
+  event?.currentTarget?.classList.add('active');
+  document.getElementById('inputTitle').innerHTML = `${tab} 입력 <span>${month}월</span>`;
+  switchTabByName(tab);
+}
+
+function switchTab(el, name) {
+  document.querySelectorAll('.month-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  switchTabByName(name);
+}
+
+function switchTabByName(name) {
+  ['인건비','상여','월비용'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t === name ? 'block' : 'none';
   });
-
-  manualBonuses.forEach(b => {
-    const tr = document.createElement('tr');
-    tr.className = 'bonus-manual-row';
-    tr.innerHTML = `
-      <td class="left"><input class="manual" type="text" value="${b.name}" onchange="updateBonus(${b.id},'name',this.value)" style="width:85px"></td>
-      <td class="left">
-        <select onchange="updateBonus(${b.id},'type',this.value)" style="padding:3px 5px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px;font-weight:600;color:#7c3aed">
-          <option value="원가(직원)"  ${b.type==='원가(직원)'?'selected':''}>원가(직원)</option>
-          <option value="판관비(임원)"${b.type==='판관비(임원)'?'selected':''}>판관비(임원)</option>
-          <option value="판관비(직원)"${b.type==='판관비(직원)'?'selected':''}>판관비(직원)</option>
-        </select>
-      </td>
-      <td class="left"><input class="manual" type="text" value="${b.kind}" onchange="updateBonus(${b.id},'kind',this.value)" style="width:120px" placeholder="상여 종류"></td>
-      <td><input class="manual" type="number" value="${b.amount}" onchange="updateBonus(${b.id},'amount',+this.value)" style="width:100px"></td>
-      <td class="left"><input class="manual" type="text" value="${b.note}" onchange="updateBonus(${b.id},'note',this.value)" style="width:160px" placeholder="비고"></td>
-      <td><button class="delete-btn" onclick="deleteBonus(${b.id})">✕</button></td>
-    `;
-    bonusBody.appendChild(tr);
-  });
-
-  const allBonuses = [...autoBonuses, ...manualBonuses];
-  const totBonus = allBonuses.reduce((s,b)=>s+b.amount, 0);
-  document.getElementById('bonus_count').textContent = `${allBonuses.length}건 / ${fmtN(totBonus)}원`;
-  document.getElementById('bonusFoot').innerHTML = allBonuses.length > 0 ? `
-    <tr class="subtotal-row">
-      <td class="left" colspan="3">합 계</td>
-      <td class="auto">${fmtN(totBonus)}</td>
-      <td colspan="2"></td>
-    </tr>` : '';
-
-  // ── P&L 요약 ──
-  const pangwanCount = eCount + pCount;
-  const provW = activeCount > 0 ? Math.round(s.provTotal * wCount / activeCount) : 0;
-  const provP = activeCount > 0 ? Math.round(s.provTotal * pangwanCount / activeCount) : 0;
-
-  const wBonuses = allBonuses.filter(b=>getCat(b.type)==='원가').reduce((s,b)=>s+b.amount,0);
-  const pBonuses = allBonuses.filter(b=>getCat(b.type)==='판관비').reduce((s,b)=>s+b.amount,0);
-
-  // ── 월 비용 렌더 ──
-  const costBody = document.getElementById('costBody');
-  const costFoot = document.getElementById('costFoot');
-  costBody.innerHTML = '';
-  let wCost = 0, pCost = 0;
-
-  monthlyCosts.forEach((c, idx) => {
-    const unitKRW = c.usd > 0 ? Math.round(c.usd * s.fxUsd) : c.krw;
-    const countVal = parseFloat(document.getElementById(`cost_count_${idx}`)?.value || c.count) || 0;
-    monthlyCosts[idx].count = countVal;
-    const amount = Math.round(unitKRW * (c.perPerson ? countVal : 1));
-    if (c.cat === '원가') wCost += amount; else pCost += amount;
-
-    const unitLabel = c.usd > 0
-      ? `$${c.usd} × ${fmtN(Math.round(c.usd * s.fxUsd))}원`
-      : `${fmtN(c.krw)}원`;
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="left"><span class="${c.cat==='원가'?'type-원가':'type-판관비'}">${c.cat}</span></td>
-      <td class="left"><b>${c.name}</b></td>
-      <td class="left muted" style="font-size:11px">${c.perPerson ? '인원별' : '고정'}</td>
-      <td class="muted">${unitLabel}</td>
-      <td>${c.perPerson
-        ? `<input class="manual" type="number" id="cost_count_${idx}" value="${countVal}" min="0" onchange="render()" style="width:60px"> 명`
-        : '<span class="muted">-</span>'}</td>
-      <td class="auto">${fmtN(amount)}</td>
-    `;
-    costBody.appendChild(tr);
-  });
-
-  const totalCost = wCost + pCost;
-  document.getElementById('cost_total_badge').textContent = `원가 ${fmtN(wCost)}원 / 판관비 ${fmtN(pCost)}원`;
-  costFoot.innerHTML = `
-    <tr class="subtotal-row">
-      <td class="left" colspan="5">합 계</td>
-      <td class="auto">${fmtN(totalCost)}</td>
-    </tr>`;
-
-  const wTotal = wSalary + wIns + wRecruit + provW + wBonuses + wCost;
-  const pTotal = eSalary + eIns + pSalary + pIns + pRecruit + provP + pBonuses + pCost;
-  const grand  = wTotal + pTotal;
-
-  document.getElementById('plGrid').innerHTML = `
-    <div class="pl-card wonga">
-      <h3>원가(직원) — ${wCount}명</h3>
-      <div class="pl-row"><span class="pl-label sub">급여</span><span class="pl-amount">${fmtN(wSalary)}</span></div>
-      <div class="pl-row"><span class="pl-label sub">4대보험 (회사)</span><span class="pl-amount">${fmtN(wIns)}</span></div>
-      <div class="pl-row"><span class="pl-label sub">채용수수료</span><span class="pl-amount">${wRecruit?fmtN(wRecruit):'-'}</span></div>
-      <div class="pl-row"><span class="pl-label sub">상여 (${allBonuses.filter(b=>getCat(b.type)==='원가').length}건)</span><span class="pl-amount">${wBonuses?fmtN(wBonuses):'-'}</span></div>
-      <div class="pl-row"><span class="pl-label sub">상여충당부채 (${wCount}명 / 월총액 ${Math.round(wCount/Math.max(activeCount,1)*100)}%)</span><span class="pl-amount">${fmtN(provW)}</span></div>
-      <div class="pl-row"><span class="pl-label sub">월 비용</span><span class="pl-amount">${wCost?fmtN(wCost):'-'}</span></div>
-      <div class="pl-row subtotal"><span class="pl-label">소계</span><span class="pl-amount">${fmtN(wTotal)}</span></div>
-    </div>
-    <div class="pl-card pangwan">
-      <h3>판관비 — ${eCount+pCount}명</h3>
-      <div class="pl-row"><span class="pl-label sub">판관비(임원) ${eCount}명 — 급여+4대보험</span><span class="pl-amount">${fmtN(eSalary+eIns)}</span></div>
-      <div class="pl-row"><span class="pl-label sub">판관비(직원) ${pCount}명 — 급여+4대보험</span><span class="pl-amount">${fmtN(pSalary+pIns)}</span></div>
-      <div class="pl-row"><span class="pl-label sub">채용수수료</span><span class="pl-amount">${(eRecruit+pRecruit)?fmtN(eRecruit+pRecruit):'-'}</span></div>
-      <div class="pl-row"><span class="pl-label sub">상여 (${allBonuses.filter(b=>getCat(b.type)==='판관비').length}건)</span><span class="pl-amount">${pBonuses?fmtN(pBonuses):'-'}</span></div>
-      <div class="pl-row"><span class="pl-label sub">상여충당부채 (${pangwanCount}명 / 월총액 ${Math.round(pangwanCount/Math.max(activeCount,1)*100)}%)</span><span class="pl-amount">${fmtN(provP)}</span></div>
-      <div class="pl-row"><span class="pl-label sub">월 비용</span><span class="pl-amount">${pCost?fmtN(pCost):'-'}</span></div>
-      <div class="pl-row subtotal"><span class="pl-label">소계</span><span class="pl-amount">${fmtN(pTotal)}</span></div>
-    </div>
-  `;
-  document.getElementById('summaryBar').innerHTML = `
-    <div class="summary-item"><div class="s-label">원가 소계</div><div class="s-value">${fmtN(wTotal)}원</div></div>
-    <div class="summary-item"><div class="s-label">판관비 소계</div><div class="s-value">${fmtN(pTotal)}원</div></div>
-    <div class="summary-item"><div class="s-label">인건비 + 상여 합계</div><div class="s-value" style="color:#fbbf24">${fmtN(grand)}원</div></div>
-    <div class="summary-item"><div class="s-label">재직 인원</div><div class="s-value">${activeCount}명</div></div>
-  `;
 }
 
-function toggleSettings() {
-  const b = document.getElementById('settingsBody');
-  const t = document.getElementById('settingsToggle');
-  b.style.display = b.style.display === 'none' ? 'flex' : 'none';
-  t.textContent = b.style.display === 'none' ? '▼ 펼치기' : '▲ 접기';
+function toggleMonths(el) {
+  el.classList.toggle('open');
+  const group = document.getElementById('monthGroup');
+  group.style.display = group.style.display === 'none' ? 'block' : 'none';
 }
 
-function toggleIns() {
-  showInsDetail = !showInsDetail;
-  document.getElementById('insToggleLabel').textContent = showInsDetail ? '▲ 접기' : '▼ 펼치기';
-  render();
-}
-
-function updateEmp(idx, field, value) { employees[idx][field] = value; render(); }
-
-function addManualBonus() {
-  manualBonuses.push({ id: bonusIdSeq++, name:'', type:'판관비(직원)', kind:'기타 상여', amount:0, note:'' });
-  render();
-}
-function updateBonus(id, field, value) {
-  const b = manualBonuses.find(x=>x.id===id);
-  if (b) { b[field] = value; render(); }
-}
-function deleteBonus(id) {
-  manualBonuses = manualBonuses.filter(x=>x.id!==id);
-  render();
-}
-
-document.querySelectorAll('.settings-body input').forEach(el => el.addEventListener('change', render));
-document.getElementById('selYear').addEventListener('change', render);
-document.getElementById('selMonth').addEventListener('change', render);
-
-render();
+buildAnnual();
 </script>
 </body>
 </html>
